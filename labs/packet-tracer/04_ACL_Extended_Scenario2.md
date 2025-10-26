@@ -1,73 +1,139 @@
----
-title: "Packet Tracer – ACL Extendida con Nombre (Escenario 2)"
-author: "Diego Ramón Claros"
-version: "1.0"
-date: "2025-10-26"
----
+# Laboratorio Avanzado de Gestión de Seguridad Informática
 
-# 🧩 Packet Tracer – Configurar ACL Extendida con Nombre (Escenario 2)
-
-## 🎯 Objetivo
-Configurar una **ACL extendida con nombre** en el router **RT1** para restringir servicios específicos desde la LAN hacia los servidores externos.
+**Universidad Cooperativa de Colombia**  
+**Facultad de Ingeniería – Ingeniería de Sistemas**  
+**Curso: Gestión de Seguridad Informática**
 
 ---
 
-## 🖧 Topología y Direccionamiento
+## 🎯 Objetivo del Laboratorio
 
-| Dispositivo | Interfaz | Dirección IP | Máscara | Gateway |
-|--------------|-----------|--------------|----------|----------|
-| RT1 | G0/0 | 172.31.1.126 | 255.255.255.224 | — |
-| RT1 | S0/0/0 | 209.165.1.2 | 255.255.255.252 | — |
-| PC1 | NIC | 172.31.1.101 | 255.255.255.224 | 172.31.1.126 |
-| PC2 | NIC | 172.31.1.102 | 255.255.255.224 | 172.31.1.126 |
-| PC3 | NIC | 172.31.1.103 | 255.255.255.224 | 172.31.1.126 |
-| Server1 | NIC | 64.101.255.254 | 255.255.255.0 | — |
-| Server2 | NIC | 64.103.255.254 | 255.255.255.0 | — |
+El objetivo de este laboratorio es que el estudiante configure y asegure una infraestructura de red corporativa, aplicando políticas de seguridad que limiten el acceso no autorizado.
+
+Se trabajará sobre una topología en **GNS3** con dispositivos **Cisco** y un **servidor** que cumplirá múltiples funciones.
+
+El enfoque se centrará primero en la configuración segura de los **servidores** y sus políticas, y posteriormente en la configuración de **red**.
 
 ---
 
-## ⚙️ Configuración del Router RT1
+## ✅ 1. Configuración de Servidores y Políticas de Seguridad
 
-```bash
-enable
-configure terminal
+Proteger los recursos críticos de la organización, asegurando acceso controlado por identidad, horarios y privilegios.
 
-! Configuración de interfaces
-interface GigabitEthernet0/0
- description LAN Local
- ip address 172.31.1.126 255.255.255.224
- no shutdown
+---
 
-interface Serial0/0/0
- description Enlace WAN a Internet
- ip address 209.165.1.2 255.255.255.252
- no shutdown
+### 1.1 Controlador de Dominio
 
-! Configuración de ACL extendida con nombre
-ip access-list extended ACL
+Centraliza la gestión de usuarios, grupos y políticas de seguridad.
 
-! PC1 – Bloquear HTTP y HTTPS hacia Server1 y Server2
- deny tcp host 172.31.1.101 host 64.101.255.254 eq 80
- deny tcp host 172.31.1.101 host 64.101.255.254 eq 443
- deny tcp host 172.31.1.101 host 64.103.255.254 eq 80
- deny tcp host 172.31.1.101 host 64.103.255.254 eq 443
+#### Tareas:
+- Instalar Windows Server (2019/2012 R2) o equivalente (Samba4).
+- Configurar Active Directory y unir estaciones al dominio.
+- Crear usuarios: **Raquel, Andrea, Iván y Paula**.
+- Políticas iniciales:
+  - Cambio forzado de contraseña en primer inicio.
+  - Contraseña mínima de **10 caracteres** incluyendo letras, números y símbolos especiales.
+  - Bloqueo tras **2 intentos fallidos**.
+- Permisos y horarios:
 
-! PC2 – Bloquear FTP hacia Server1 y Server2
- deny tcp host 172.31.1.102 host 64.101.255.254 eq 21
- deny tcp host 172.31.1.102 host 64.103.255.254 eq 21
+| Usuario | Horario | Permisos |
+|--------|---------|----------|
+| Iván | L-M-V 6:00 p.m. – 10:00 p.m. / Sáb 8:00 a.m. – 12:00 m. | Apagar el sistema. Eliminar cuentas |
+| Raquel | Todos los días 2:00 p.m. – 10:00 p.m. | Apagar sistema |
+| Andrea | Todos los días 2:00 p.m. – 10:00 p.m. | Apagar sistema. Eliminar cuentas |
+| Paula | L-V 8:00 a.m. – 1:00 p.m. | Solo en PC asignada |
 
-! PC3 – Bloquear ICMP (ping) hacia Server1 y Server2
- deny icmp host 172.31.1.103 host 64.101.255.254
- deny icmp host 172.31.1.103 host 64.103.255.254
+#### Seguridad adicional:
+- Auditoría de inicios y cambios de cuentas.
+- Caducidad máxima de contraseña: **90 días**.
+- No reusar últimas **5 contraseñas**.
+- Bloqueo de cuenta **15 min** por intentos fallidos.
+- Activar MFA en cuentas privilegiadas.
+- Habilitar LDAP Signing.
+- GPO: deshabilitar cuentas inactivas > 30 días.
 
-! Permitir el resto del tráfico
- permit ip any any
+---
 
-exit
+### 1.2 Servidor de Archivos
 
-! Aplicar ACL en la interfaz LAN de salida
-interface GigabitEthernet0/0
- ip access-group ACL out
+Directorio: **RAI&CA**  
+Archivos: **EXA1** y **EXA2**
 
-end
-write memory
+| Usuario | EXA1 | EXA2 |
+|--------|------|------|
+| Iván | Solo lectura | - |
+| Andrea | Control total | Control total |
+| Raquel | Lectura/Escritura | Solo lectura |
+| Paula | Solo lectura | Sin acceso |
+
+---
+
+### 1.3 Políticas del Sistema
+
+| Usuario | Restricción |
+|--------|------------|
+| Raquel | Sin Panel de Control |
+| Iván | No cambiar fondo de pantalla |
+| Andrea | Única con acceso a configuración de pantalla |
+| Paula | Sin acceso a puertos USB |
+
+Medidas extra:
+- Desactivar ejecución automática de medios extraíbles.
+- Bloqueo por inactividad: **10 min**.
+- Restricción de herramientas administrativas.
+- Monitoreo de acceso a recursos compartidos.
+- Implementar AppLocker o equivalente.
+
+---
+
+### 1.4 Configuración AAA con RADIUS
+
+Autenticación centralizada integrada con Active Directory.
+
+#### En el servidor:
+- Registrar router Cisco como **cliente RADIUS** (IP + clave).
+- Crear usuarios con mismas políticas del AD.
+- Habilitar logs de autenticación.
+
+Sistemas soportados:
+- Windows Server → **NPS**
+- Linux → **FreeRADIUS** + **LDAP/Samba4**
+
+---
+
+## 🔐 2. Configuración de Red y Seguridad Cisco
+
+Aplica segmentación, control de acceso y mitigaciones de capa 2 y 3.
+
+---
+
+### 2.1 VLANs y Enrutamiento Inter-VLAN
+
+- VLAN 10 → **Estudiantes**
+- VLAN 20 → **Profesores**
+- Router-on-a-Stick para interconexión controlada
+
+---
+
+### 2.2 Seguridad en Puertos
+
+Evita accesos y ataques por capa 2.
+
+#### 2.2.1 Port Security
+- Activar Port Security en puertos de acceso.
+- Límite de MACs por puerto.
+- Definir acción ante violación.
+- Verificar estado y direcciones aprendidas.
+
+#### 2.2.2 DHCP Snooping
+- Activar en VLANs especificadas.
+- Definir puertos de confianza (uplinks a servidor/router).
+- Limitar paquetes DHCP por segundo en puertos no confiables.
+- Validar que solo el servidor DHCP asigne IP.
+
+#### Recomendaciones adicionales:
+- BPDU Guard / Root Guard según topología.
+- Control de tormentas broadcast/multicast.
+- Documentar resultados y eventos detectados.
+
+---
